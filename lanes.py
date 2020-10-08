@@ -2,6 +2,69 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
+def make_coordinates(image, line_parameters):
+    slope, intercept = line_parameters
+
+    #get the height
+    #rint(image.shape)
+    #704
+
+    y1 = image.shape[0]
+    y2 = int(y1*(3/5)) 
+    x1 = int((y1 - intercept)/slope)
+    x2 = int((y2 - intercept)/slope)
+    return np.array([x1, y1, x2, y2])
+
+def average_slope_intercept(image, lines):
+
+    #left line on the img
+    left_fit = []
+
+    #right line on the img
+    right_fit = []
+
+    for line in lines:
+        x1, y1, x2, y2 = line.reshape(4)
+        
+        #y = mx + b
+        parameters = np.polyfit((x1, x2), (y1, y2), 1)
+        
+        #test if it works
+        #print parameters
+        #test passed, prints slope
+        
+        slope = parameters[0]
+        intercept = parameters[1]
+        
+        #lines on the left with have a negative slope
+        #as y declines / decreases
+
+        #lines on the right will have a positive slope
+        #as x grows, so does y
+
+        if slope < 0:
+            left_fit.append((slope, intercept))
+        else:
+            right_fit.append((slope, intercept))
+    
+    #test 
+    #rint(left_fit)
+    #rint(right_fit)
+    #passed
+
+    left_fit_average = np.average(left_fit, axis = 0)
+    right_fit_average = np.average(right_fit, axis = 0)
+    
+    #test
+    #rint(left_fit_average, 'left')
+    #rint(right_fit_average, 'right')
+    #passed
+
+    left_line = make_coordinates(image, left_fit_average)
+    right_line = make_coordinates(image, right_fit_average)
+
+    return np.array([left_line, right_line])
+
 def canny(image):
     #cvt to grayscale which has 1 channel
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -29,10 +92,7 @@ def display_lines(image, lines):
     if lines is not None:
 
         #this will print all lines in a 2D array
-        for line in lines:
-
-            #we however want to reshape it in 1D
-            x1, y1, x2, y2 = line.reshape(4)
+        for x1, y1, x2, y2 in lines:
             cv2.line(line_image, (x1, y1), (x2, y2), (255, 0 ,0), 10)
 
     return line_image
@@ -60,11 +120,15 @@ image = cv2.imread('test_image.jpg')
 #on the original image
 lane_image = np.copy(image)
 
-canny = canny(lane_image)
-cropped_image = region_of_interest(canny)
+canny_image = canny(lane_image)
+cropped_image = region_of_interest(canny_image)
 
+#this is the algorithm, it is really powerful
 lines = cv2.HoughLinesP(cropped_image, 2, np.pi/180, 100, np.array([]), minLineLength=40, maxLineGap=5)
-line_image = display_lines(lane_image, lines)
+
+averaged_lines = average_slope_intercept(lane_image, lines)
+
+line_image = display_lines(lane_image, averaged_lines)
 
 our_image = cv2.addWeighted(lane_image, 0.8, line_image, 1, 1)
 
