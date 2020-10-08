@@ -23,6 +23,20 @@ def canny(image):
 
     return canny
 
+def display_lines(image, lines):
+
+    line_image = np.zeros_like(image)
+    if lines is not None:
+
+        #this will print all lines in a 2D array
+        for line in lines:
+
+            #we however want to reshape it in 1D
+            x1, y1, x2, y2 = line.reshape(4)
+            cv2.line(line_image, (x1, y1), (x2, y2), (255, 0 ,0), 10)
+
+    return line_image
+
 def region_of_interest(image):
 
     #return the region of the triangle
@@ -34,7 +48,9 @@ def region_of_interest(image):
     #fill the mask
     cv2.fillPoly(mask, polygons, 255)
 
-    return mask
+    masked_image = cv2.bitwise_and(image, mask)
+
+    return masked_image
 
 
 #load image
@@ -45,9 +61,15 @@ image = cv2.imread('test_image.jpg')
 lane_image = np.copy(image)
 
 canny = canny(lane_image)
+cropped_image = region_of_interest(canny)
+
+lines = cv2.HoughLinesP(cropped_image, 2, np.pi/180, 100, np.array([]), minLineLength=40, maxLineGap=5)
+line_image = display_lines(lane_image, lines)
+
+our_image = cv2.addWeighted(lane_image, 0.8, line_image, 1, 1)
 
 #name our window
-cv2.imshow('AI EYES', region_of_interest(canny))
+cv2.imshow('AI EYES', our_image)
 
 #display our image
 cv2.waitKey(0)
@@ -63,3 +85,5 @@ cv2.waitKey(0)
 #p2 will be f(1100, 700)
 #p3 will be f(500, 200)
 #this marks a triangle
+
+#we will need hough space for lane lines
